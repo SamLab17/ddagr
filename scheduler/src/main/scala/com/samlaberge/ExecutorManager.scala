@@ -3,19 +3,19 @@ package com.samlaberge
 import com.google.protobuf.empty.Empty
 import com.samlaberge.SystemConfig.MAX_MESSAGE_SIZE
 import com.samlaberge.Util._
-import com.samlaberge.protos.executor.{EndClientSessionParams, ExecutorGrpc, ExecutorSysInfo, NewClientSessionParams, TaskParam, TaskResult}
 import com.samlaberge.protos.executor.ExecutorGrpc.ExecutorStub
-import com.samlaberge.protos.scheduler.{ExecuteOperationResult, ExecutorPartitionParams, ExecutorPartitionResult, LookupClientFileContents, LookupClientFileParams}
+import com.samlaberge.protos.executor._
+import com.samlaberge.protos.scheduler._
 import io.grpc.{Context, ManagedChannelBuilder}
 
 import java.io.FileNotFoundException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}
-import scala.language.postfixOps
 import scala.concurrent.ExecutionContext.Implicits._
+import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}
+import scala.concurrent.{Await, Future}
+import scala.language.postfixOps
 import scala.math.abs
 import scala.util.{Failure, Success}
 
@@ -48,7 +48,13 @@ class ExecutorManager extends Logging {
 
   def addExecutor(ip: String, port: Int): Int = {
 
-    val channel = ManagedChannelBuilder.forAddress(ip, port).maxInboundMessageSize(MAX_MESSAGE_SIZE).usePlaintext().build
+    /*_*/
+    val channel = ManagedChannelBuilder
+      .forAddress(ip, port)
+      .maxInboundMessageSize(MAX_MESSAGE_SIZE)
+      .usePlaintext()
+      .build
+    /*_*/
     val executorStub = ExecutorGrpc.stub(channel)
     val id = nextExecutorId.getAndIncrement()
 
@@ -62,17 +68,15 @@ class ExecutorManager extends Logging {
     )
 
 
-    val ctx = Context.current().fork();
+    val ctx = Context.current().fork()
     ctx.run(() => {
       val sysInfo = executorStub.getSysInfo(Empty())
       sysInfo onComplete {
-        case Success(sysInfo) => {
+        case Success(sysInfo) =>
           executors(id).lastSysInfo = Some(sysInfo)
           executors(id).status = Idle()
-        }
-        case Failure(e) => {
+        case Failure(e) =>
           logErr(s"Failed to get system information from executor at $ip", e)
-        }
       }
     })
 
@@ -108,7 +112,7 @@ class ExecutorManager extends Logging {
 
   case class ClientState(
     nextStageId: AtomicInteger,
-    fileStub: FileLookupStub
+    fileStub: FileLookupStub,
   )
 
   val clientState = new ConcurrentHashMap[Int, ClientState]()
@@ -137,7 +141,7 @@ class ExecutorManager extends Logging {
 
   def lookupClientFile(request: LookupClientFileParams): Future[LookupClientFileContents] = {
     val fileStub = clientState.get(request.clientId).fileStub
-    val bytes = if(request.isClass) {
+    val bytes = if (request.isClass) {
       fileStub.lookupClass(request.fileName)
     } else {
       fileStub.lookupFile(request.fileName)
@@ -159,7 +163,7 @@ class ExecutorManager extends Logging {
     logDebug("Client submitted operation to execute.")
 
     val state = clientState.get(clientId)
-    if(state == null) {
+    if (state == null) {
       throw new IllegalArgumentException("Invalid client ID")
     }
 
@@ -197,6 +201,15 @@ class ExecutorManager extends Logging {
           // Beginning of next stage finishes the reduce
           FinishReduceInstruction(StageInputInstruction(id), reduceFn)
         }
+        case FirstNTransform(input, n, sortFn) => {
+          val in = traverse(input)
+          val id = assignId()
+          val exec = getReduceTargetExecutor()
+          val instr = FirstNInstruction(in, n, sortFn, exec, id)
+          stages += Stage(id, instr)
+
+          FinishFirstNInstruction(StageInputInstruction(id), n, sortFn)
+        }
         case ClientTextFileSource(fileName) => ClientTextFileInputInstruction(fileName)
         case ClientMultipleTextFilesSource(fileNames) => ClientMultipleTextFileInputInstruction(fileNames)
         case UrlTextFileSource(url) => UrlTextFileInputInstruction(url)
@@ -226,18 +239,17 @@ class ExecutorManager extends Logging {
     }
 
     val lastInstr = op match {
-      case CollectOp(input) => {
-         CollectInstruction(traverse(input))
-      }
-      case CountOp(input) => {
-         CountInstruction(traverse(input))
-      }
-      case CollectGroupedOp(input) => {
-        CollectGroupedInstruction(traverseGrouped(input))
-      }
-      case CountGroupedOp(input) => {
+      case CollectOp(input, limit) =>
+        CollectInstruction(traverse(input), limit)
+
+      case CountOp(input) =>
+        CountInstruction(traverse(input))
+
+      case CollectGroupedOp(input, limit) =>
+        CollectGroupedInstruction(traverseGrouped(input), limit)
+
+      case CountGroupedOp(input) =>
         CountGroupedInstruction(traverseGrouped(input))
-      }
     }
     val finalStage = Stage(assignId(), lastInstr)
     stages += finalStage
@@ -296,7 +308,7 @@ class ExecutorManager extends Logging {
           .map(taskResults => {
             // Combine results together
             val results = taskResults.map(t => deserialize[OperationResult](t.output, clientCl))
-//            logDebug(s"Stage results: $results")
+            //            logDebug(s"Stage results: $results")
             results.reduce(_ combineWith _)
           }) andThen {
           case Success(result) => {
@@ -378,9 +390,11 @@ class ExecutorManager extends Logging {
         case RepartitionInstruction(input, n, o) => partition(input).map(i => RepartitionInstruction(i, n, o))
         case ReduceAndSendInstruction(input, r, e, o) => partition(input).map(i => ReduceAndSendInstruction(i, r, e, o))
         case FinishReduceInstruction(input, r) => partition(input).map(i => FinishReduceInstruction(i, r))
-        case CollectInstruction(input) => partition(input).map(i => CollectInstruction(i))
+        case instr: FirstNInstruction => partition(instr.input).map(i => instr.copy(input = i))
+        case instr: FinishFirstNInstruction => partition(instr.input).map(i => instr.copy(input = i))
+        case CollectInstruction(input, l) => partition(input).map(i => CollectInstruction(i, l))
         case CountInstruction(input) => partition(input).map(i => CountInstruction(i))
-        case GroupByInstruction(input, k, e, o) => partition(input).map(i => GroupByInstruction(i, k, e, o))
+        case instr: GroupByInstruction => partition(instr.input).map(i => instr.copy(input = i))
         case FinishGroupBy(input, k) => partition(input).map(i => FinishGroupBy(i, k))
         case MapValuesInstruction(input, m) => partition(input).map(i => MapValuesInstruction(i, m))
         case FromKeysInstruction(input) => partition(input).map(i => FromKeysInstruction(i))
@@ -431,13 +445,13 @@ class ExecutorManager extends Logging {
           case Some(RepartitionOpResult(executors)) => executors
           case Some(ReduceAndSendResult(executor)) => Seq(executor)
           case Some(GroupByOpResult(executors)) => executors
+          case Some(FirstNResult(executor)) => Seq(executor)
           case _ => Seq()
         }
       }).distinct
       resultExecutors ++= partitionExecutors
 
       // Perhaps other checks later...
-
       Future.successful(resultExecutors)
 
     }
@@ -486,7 +500,7 @@ class ExecutorManager extends Logging {
           case _ => false
         }
       )
-    if(execs.size == 1) {
+    if (execs.size == 1) {
       Seq(ExecutorRingPosition(
         execs.head.executorId,
         0

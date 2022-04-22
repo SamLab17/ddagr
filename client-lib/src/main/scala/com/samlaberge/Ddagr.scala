@@ -1,49 +1,38 @@
 package com.samlaberge
 
-import io.grpc.{ManagedChannel, ManagedChannelBuilder, Server, ServerBuilder}
+import com.samlaberge.SystemConfig.{MAX_MESSAGE_SIZE, PORTS}
+import com.samlaberge.Util._
+import com.samlaberge.protos.scheduler.SchedulerClientGrpc.SchedulerClientBlockingStub
+import com.samlaberge.protos.scheduler._
+import io.grpc.{ManagedChannel, ManagedChannelBuilder}
 
 import java.io.{File, FileNotFoundException}
-import com.samlaberge.protos.scheduler._
-import com.samlaberge.protos.scheduler.SchedulerClientGrpc.SchedulerClientBlockingStub
-import com.samlaberge.SystemConfig.{MAX_MESSAGE_SIZE, PORTS}
-import com.samlaberge.protos.fileLookup.FileLookupServiceGrpc
-
-import java.net.{InetAddress, Socket, URL}
-import scala.concurrent.ExecutionContext
-import Util._
+import java.net.{InetAddress, URL}
 
 
 class Ddagr(options: DdagrOptions)(implicit callingObject: DdagrApp) extends Logging {
 
   // Start up Ddagr client
 
-  // Set up local server.
-//  val server: Server = ServerBuilder
-//    .forPort(options.localPort)
-//    .addService(
-//      FileLookupServiceGrpc.bindService(
-//        new FileLookupImpl(callingObject.getClass.getProtectionDomain.getCodeSource.getLocation.getPath),
-//        ExecutionContext.global))
-//    .build
-//  server.start()
-
   // Init with scheduler
-  val channel: ManagedChannel = ManagedChannelBuilder
+  /*_*/
+  private val channel: ManagedChannel = ManagedChannelBuilder
     .forAddress(options.schedulerIp, options.schedulerPort)
     .maxInboundMessageSize(MAX_MESSAGE_SIZE)
     .usePlaintext()
     .build
-  val schedulerStub: SchedulerClientBlockingStub = SchedulerClientGrpc.blockingStub(channel)
-  val initResult: DdagrClientInitResult = schedulerStub.clientInit(
+  /*_*/
+  private val schedulerStub: SchedulerClientBlockingStub = SchedulerClientGrpc.blockingStub(channel)
+  private val initResult: DdagrClientInitResult = schedulerStub.clientInit(
     DdagrClientInitParams(
       clientFileServicePort = options.localPort,
       clientIp = InetAddress.getLocalHost.getHostAddress,
     )
   )
 
-  val classDir = callingObject.getClass.getProtectionDomain.getCodeSource.getLocation.getPath
-  val fileClient = new FileLookupClient(options.schedulerIp, initResult.fileServerPort, classDir)
-  var cleanedUp = false
+  private val classDir = callingObject.getClass.getProtectionDomain.getCodeSource.getLocation.getPath
+  private val fileClient = new FileLookupClient(options.schedulerIp, initResult.fileServerPort, classDir)
+  private var cleanedUp = false
 
   sys addShutdownHook {
     if(!cleanedUp)
@@ -71,7 +60,7 @@ class Ddagr(options: DdagrOptions)(implicit callingObject: DdagrApp) extends Log
 
   def multipleLocalTextFiles(filePaths: Seq[String]): Dataset[String] = {
     filePaths.foreach(f => {
-      if (!(new File(f).exists()))
+      if (!new File(f).exists())
         throw new FileNotFoundException(s"File $f does not exist")
     })
     Dataset.MultipleLocalTextFiles(this, filePaths)
@@ -79,7 +68,7 @@ class Ddagr(options: DdagrOptions)(implicit callingObject: DdagrApp) extends Log
 
   def urlTextFile(fileUrl: String): Dataset[String] = {
     // Check if fileUrl is valid
-    (new URL(fileUrl)).openStream().close()
+    new URL(fileUrl).openStream().close()
     Dataset.UrlTextFile(this, fileUrl)
   }
 
@@ -100,6 +89,7 @@ class Ddagr(options: DdagrOptions)(implicit callingObject: DdagrApp) extends Log
       case Dataset.FilteredDataset(_, src, filterFn) => FilterTransform(convertDataset(src), filterFn.asInstanceOf[Any => Boolean])
       case Dataset.RepartitionedDataset(_, src, n) => RepartitionTransform(convertDataset(src), n)
       case Dataset.ReducedDataset(_, src, reduceFn) => ReduceTransform(convertDataset(src), reduceFn.asInstanceOf[(Any, Any) => Any])
+      case Dataset.TopNDataset(_, src, n, sortFn) => FirstNTransform(convertDataset(src), n, sortFn.asInstanceOf[(Any, Any) => Boolean])
       case Dataset.FromKeysDataset(_, src) => FromKeysTransform(convertGroupedDataset(src))
       case Dataset.ReducedGroupsDataset(_, src, reduceFn) => ReduceGroupsTransform(convertGroupedDataset(src), reduceFn.asInstanceOf[(Any, Any) => Any])
     }
@@ -114,14 +104,14 @@ class Ddagr(options: DdagrOptions)(implicit callingObject: DdagrApp) extends Log
 
   // Have call back methods for Datasets to call when an action (.count, .collect, .save) is invoked
 
-  def doCollect[T](d: Dataset[T]): Seq[T] = {
-    val op = CollectOp(convertDataset(d))
+  def doCollect[T](d: Dataset[T], limit: Option[Int]): Seq[T] = {
+    val op = CollectOp(convertDataset(d), limit)
     val res = schedulerStub.executeOperation(ExecuteOperationParams(
       initResult.clientId,
       serialize(op)
     ))
     deserialize[OperationResult](res.resultData) match {
-      case CollectOpResult(result) => result.asInstanceOf[Seq[T]]
+      case CollectOpResult(result, _) => result.asInstanceOf[Seq[T]]
       case _ => throw new IllegalStateException("Wrong result type returned by scheduler.")
     }
   }
@@ -139,14 +129,14 @@ class Ddagr(options: DdagrOptions)(implicit callingObject: DdagrApp) extends Log
   }
 
 
-  def doCollectGrouped[K, T](d: GroupedDataset[K, T]): Map[K, T] = {
-    val op = CollectGroupedOp(convertGroupedDataset(d))
+  def doCollectGrouped[K, T](d: GroupedDataset[K, T], limit: Option[Int]): Map[K, T] = {
+    val op = CollectGroupedOp(convertGroupedDataset(d), limit)
     val res = schedulerStub.executeOperation(ExecuteOperationParams(
       initResult.clientId,
       serialize(op)
     ))
     deserialize[OperationResult](res.resultData) match {
-      case CollectGroupedOpResult(result) => result.asInstanceOf[Map[K, T]]
+      case CollectGroupedOpResult(result, _) => result.asInstanceOf[Map[K, T]]
       case _ => throw new IllegalStateException("Wrong result type returned by scheduler.")
     }
   }

@@ -86,11 +86,10 @@ object RedditRPlaceUrls {
 //    u.substring(0, 41)  + "if_" + u.substring(41)
 //  })
 
-  val prefix = "https://www.samlaberge.com/ddagr-data/"
+  val prefix = "https://www.samlaberge.com/ddagr-data/2022_place_canvas_history-"
+  val suffix = ".csv.gzip"
+  val formatNum = (n: Int) => "%012d" format n
+  val N = 25
 
-    val urls = Array(
-      "2022_place_canvas_history-000000000000.csv.gzip",
-      "2022_place_canvas_history-000000000001.csv.gzip",
-      "2022_place_canvas_history-000000000002.csv.gzip"
-    ).map(s => prefix + s)
+  val urls: Seq[String] = (0 until N).map(i => prefix + formatNum(i) + suffix)
 }

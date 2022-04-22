@@ -3,7 +3,7 @@ package com.samlaberge
 import com.google.protobuf.empty.Empty
 import com.samlaberge.SystemConfig.MAX_MESSAGE_SIZE
 import com.samlaberge.Util._
-import com.samlaberge.protos.executor.ExecutorGrpc.ExecutorStub
+import com.samlaberge.protos.executor.ExecutorGrpc.{ExecutorStub, stub}
 import com.samlaberge.protos.executor._
 import com.samlaberge.protos.scheduler.SchedulerExecutorGrpc.SchedulerExecutorBlockingStub
 import com.samlaberge.protos.scheduler.{ExecutorInfoParams, ExecutorPartitionParams, LookupClientFileParams}
@@ -57,7 +57,13 @@ class ExecutorServerImpl(schedulerStub: SchedulerExecutorBlockingStub) extends E
         executorStubs.get(execId)
       else {
         val executorInfo = schedulerStub.getExecutorsInfo(ExecutorInfoParams(Seq(execId))).executors.head
-        val channel = ManagedChannelBuilder.forAddress(executorInfo.executorIp, executorInfo.executorPort).maxInboundMessageSize(MAX_MESSAGE_SIZE).usePlaintext().build
+        /*_*/
+        val channel = ManagedChannelBuilder
+          .forAddress(executorInfo.executorIp, executorInfo.executorPort)
+          .maxInboundMessageSize(MAX_MESSAGE_SIZE)
+          .usePlaintext()
+          .build
+        /*_*/
         val stub = ExecutorGrpc.stub(channel)
         executorStubs.putIfAbsent(execId, stub)
         stub
@@ -142,37 +148,41 @@ class ExecutorServerImpl(schedulerStub: SchedulerExecutorBlockingStub) extends E
 
 
     result match {
-      case Success(output) => {
+      case Success(output) =>
         Future.successful(TaskResult(serialize(output)))
-      }
-      case Failure(e: InterruptedException) => {
+
+      case Failure(e: InterruptedException) =>
         log("Thread running task was interrupted. Job ended")
         //        Future.successful(TaskResult(status=TERMINATED, output=Array[Byte](0)))
         Future.failed(e)
-      }
-      case Failure(e: Throwable) => {
+
+      case Failure(e: Throwable) =>
         logErr(s"Client provided code threw an exception.", e)
         Future.failed(new StatusRuntimeException(Status.INVALID_ARGUMENT.withDescription("Client-provided lambda threw an exception.")))
-      }
+
     }
   }
+
 
 
   def executeOperation(instr: ExecutorInstruction, clientInfo: ClientInfo): OperationResult = {
     // Execute a top-level operation (one that requires a response sent back to the scheduler)
     instr match {
-      case CountInstruction(input) => {
+      case CountInstruction(input) =>
         CountOpResult(executeInstructions(input, clientInfo).asInstanceOf[Seq[_]].size)
-      }
-      case CollectInstruction(input) => {
-        CollectOpResult(executeInstructions(input, clientInfo).asInstanceOf[Seq[_]])
-      }
-      case CountGroupedInstruction(input) => {
+
+      case CollectInstruction(input, limit) =>
+        val res = executeInstructions(input, clientInfo).asInstanceOf[Seq[_]]
+        CollectOpResult(res.take(limit.getOrElse(res.size)), limit)
+
+      case CountGroupedInstruction(input) =>
         CountGroupedOpResult(executeInstructions(input, clientInfo).asInstanceOf[Map[_, _]].size)
-      }
-      case CollectGroupedInstruction(input) => {
-        CollectGroupedOpResult(executeInstructions(input, clientInfo).asInstanceOf[Map[Any, Any]])
-      }
+
+      case CollectGroupedInstruction(input, limit) =>
+        val res = executeInstructions(input, clientInfo).asInstanceOf[Map[Any, Any]]
+        CollectGroupedOpResult(res.take(limit.getOrElse(res.size)), limit)
+
+
       case RepartitionInstruction(input, nPartitions, outputId) =>
         handleRepartition(
           executeInstructions(input, clientInfo).asInstanceOf[Seq[_]],
@@ -180,7 +190,8 @@ class ExecutorServerImpl(schedulerStub: SchedulerExecutorBlockingStub) extends E
           outputId,
           clientInfo
         )
-      case ReduceAndSendInstruction(input, reduceFn, execId, outputId) => {
+
+      case ReduceAndSendInstruction(input, reduceFn, execId, outputId) =>
         handleReduceAndSend(
           executeInstructions(input, clientInfo).asInstanceOf[Seq[_]],
           reduceFn,
@@ -188,8 +199,9 @@ class ExecutorServerImpl(schedulerStub: SchedulerExecutorBlockingStub) extends E
           outputId,
           clientInfo
         )
-      }
-      case GroupByInstruction(input, keyFn, execs, outputId) => {
+
+
+      case GroupByInstruction(input, keyFn, execs, outputId) =>
         handleGroupBy(
           executeInstructions(input, clientInfo).asInstanceOf[Seq[_]],
           keyFn,
@@ -197,82 +209,82 @@ class ExecutorServerImpl(schedulerStub: SchedulerExecutorBlockingStub) extends E
           outputId,
           clientInfo
         )
-      }
-      case _ => {
+
+      case FirstNInstruction(input, n, sortFn, exec, outputId) =>
+        handleFirstN(
+          executeInstructions(input, clientInfo).asInstanceOf[Seq[Any]],
+          n,
+          sortFn,
+          exec,
+          outputId,
+          clientInfo
+        )
+
+      case _ =>
         throw new IllegalArgumentException(s"Invalid top-level instruction given: ${instr.getClass.getName}")
-      }
+
     }
   }
 
   def executeInstructions(instr: ExecutorInstruction, clientInfo: ClientInfo): Any = {
     instr match {
-      case StageInputInstruction(stageId) => {
+      case StageInputInstruction(stageId) =>
         if (clientInfo.intermediateOutputs containsKey stageId) {
           clientInfo.intermediateOutputs.get(stageId)
         } else {
-          throw new IllegalArgumentException(s"Instruction depends on output of stage ${stageId}, but not present.")
+          throw new IllegalArgumentException(s"Instruction depends on output of stage $stageId, but not present.")
         }
-      }
 
       case FromSeqInputInstruction(data) => data
 
-      case ClientTextFileInputInstruction(fileName) => {
+      case ClientTextFileInputInstruction(fileName) =>
         handleClientFile(fileName, clientInfo.fileStub)
-      }
 
-      case UrlTextFileInputInstruction(fileUrl) => {
+      case UrlTextFileInputInstruction(fileUrl) =>
         handleUrlFile(fileUrl)
-      }
 
-      case ClientMultipleTextFileInputInstruction(fileNames) => {
+      case ClientMultipleTextFileInputInstruction(fileNames) =>
         fileNames.map(f => handleClientFile(f, clientInfo.fileStub)).reduce(_ ++ _)
-      }
 
-      case UrlMultipleTextFileInputInstruction(urls) => {
+      case UrlMultipleTextFileInputInstruction(urls) =>
         urls.par.map(u => handleUrlFile(u)).seq.reduce(_ ++ _)
-      }
 
-      case MapInstruction(input, mapFn) => {
+      case MapInstruction(input, mapFn) =>
         // FIXME have cutoff for .par?
         executeInstructions(input, clientInfo).asInstanceOf[Seq[_]].par.map(mapFn).seq
-      }
 
-      case FlatMapInstruction(input, flatMapFn) => {
+      case FlatMapInstruction(input, flatMapFn) =>
         executeInstructions(input, clientInfo).asInstanceOf[Seq[_]].par.flatMap(flatMapFn).seq
-      }
 
-      case FilterInstruction(input, filterFn) => {
+      case FilterInstruction(input, filterFn) =>
         val filterInput = executeInstructions(input, clientInfo).asInstanceOf[Seq[_]]
-        filterInput.filter(filterFn).seq
-      }
+        filterInput.filter(filterFn)
 
-      case FinishReduceInstruction(input, reduceFn) => {
+      case FinishReduceInstruction(input, reduceFn) =>
         Seq(executeInstructions(input, clientInfo).asInstanceOf[Seq[_]].par.reduce(reduceFn))
-      }
 
-      case FinishGroupBy(input, keyFn) => {
+      case FinishGroupBy(input, keyFn) =>
         val data = executeInstructions(input, clientInfo).asInstanceOf[Seq[_]]
         logDebug(s"Finishing groupBy for ${data.size} entries")
         // TODO: Is .par worth all of this .view.mapValues().toMap cruft?
         data.par.groupBy(keyFn).seq.view.mapValues(_.seq).toMap
-      }
 
-      case MapValuesInstruction(input, mapFn) => {
+      case FinishFirstNInstruction(input, n, sortFn) =>
+        val data = executeInstructions(input, clientInfo).asInstanceOf[Seq[_]]
+        data.sortWith(sortFn).take(n)
+
+      case MapValuesInstruction(input, mapFn) =>
         val data = executeInstructions(input, clientInfo).asInstanceOf[Map[_, _]]
         data.view.mapValues(_.asInstanceOf[Seq[_]].map(mapFn)).toMap
-      }
 
-      case FromKeysInstruction(input) => {
+      case FromKeysInstruction(input) =>
         executeInstructions(input, clientInfo).asInstanceOf[Map[_, _]].keys.toSeq
-      }
 
-      case ReduceGroupsInstruction(input, reduceFn) => {
+      case ReduceGroupsInstruction(input, reduceFn) =>
         executeInstructions(input, clientInfo).asInstanceOf[Map[_, _]].view.mapValues(_.asInstanceOf[Seq[_]].reduce(reduceFn)).toSeq
-      }
 
-      case _ => {
+      case _ =>
         throw new IllegalArgumentException(s"Invalid intermediate instruction encountered: $instr")
-      }
 
     }
   }
@@ -298,8 +310,8 @@ class ExecutorServerImpl(schedulerStub: SchedulerExecutorBlockingStub) extends E
     val futures = executors.map(eid => {
       val executorStub = getStubFor(eid)
 
-      logDebug(s"Sending intermediate data to executor ${eid}"
-        + s"(size<=${sizePerExecutor}, clientId= ${clientInfo.id}, intermediateId=$outputId)")
+      logDebug(s"Sending intermediate data to executor $eid"
+        + s"(size<=$sizePerExecutor, clientId= ${clientInfo.id}, intermediateId=$outputId)")
 
       val data = input.slice(i * sizePerExecutor, (i + 1) * sizePerExecutor min input.size)
       i = i + 1
@@ -346,16 +358,22 @@ class ExecutorServerImpl(schedulerStub: SchedulerExecutorBlockingStub) extends E
     val groupedByDestination = input.par.groupBy(getExecIdForEntry).seq
 
     val futures = groupedByDestination.map {
-      case (eid, data) => {
+      case (eid, data) =>
         val stub = getStubFor(eid)
         logDebug(s"Sending ${data.size} entries to $eid")
         stub.sendIntermediateData(SendIntermediateParam(clientInfo.id, outputId, serialize(data.seq)))
-      }
     }
 
     Await.result(Future.sequence(futures), Duration.Inf)
     logDebug(s"All entries sent")
     GroupByOpResult(groupedByDestination.keys.toSeq)
+  }
+
+  def handleFirstN(input: Seq[_], n: Int, sortFn: (Any, Any) => Boolean, exec: Int, outputId: Int, clientInfo: ClientInfo): OperationResult = {
+    val data = input.sortWith(sortFn).take(n)
+    val future = getStubFor(exec).sendIntermediateData(SendIntermediateParam(clientInfo.id, outputId, serialize(data)))
+    Await.result(future, Duration.Inf)
+    FirstNResult(exec)
   }
 
   def handleClientFile(fileName: String, fileService: FileLookupStub): Seq[String] = {

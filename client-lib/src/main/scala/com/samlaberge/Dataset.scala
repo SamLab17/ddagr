@@ -1,6 +1,6 @@
 package com.samlaberge
 
-import com.samlaberge.Dataset.ReducedDataset
+import com.samlaberge.Dataset.{ReducedDataset, TopNDataset}
 
 import java.io.File
 
@@ -38,8 +38,13 @@ trait Dataset[T] {
     ReducedDataset(ddagr, this, reduceFn)
   }
 
-  def collect(): Seq[T] = {
-    ddagr.doCollect(this)
+  def firstN(n: Int, lt: (T, T) => Boolean): Dataset[T] = {
+    ClosureCleaner.clean(lt)
+    TopNDataset(ddagr, this, n, lt)
+  }
+
+  def collect(limit: Option[Int] = None): Seq[T] = {
+    ddagr.doCollect(this, limit)
   }
 
   def count(): Int = {
@@ -69,7 +74,8 @@ object Dataset {
   case class FilteredDataset[T](ddagr: Ddagr, src: Dataset[T], filterFn: T => Boolean) extends Dataset[T]
   case class RepartitionedDataset[T](ddagr: Ddagr, src: Dataset[T], n: Int) extends Dataset[T]
   case class ReducedDataset[T](ddagr: Ddagr, src: Dataset[T], reduceFn: (T, T) => T) extends Dataset[T]
+  case class TopNDataset[T](ddagr: Ddagr, src: Dataset[T], n: Int, lt: (T, T) => Boolean) extends Dataset[T]
 
   case class FromKeysDataset[K, T](ddagr: Ddagr, src: GroupedDataset[K, T]) extends Dataset[K]
-  case class ReducedGroupsDataset[K, U](ddagr: Ddagr, src: GroupedDataset[K, U], reduceFn: (U, U) => U) extends Dataset[Tuple2[K, U]]
+  case class ReducedGroupsDataset[K, U](ddagr: Ddagr, src: GroupedDataset[K, U], reduceFn: (U, U) => U) extends Dataset[(K, U)]
 }

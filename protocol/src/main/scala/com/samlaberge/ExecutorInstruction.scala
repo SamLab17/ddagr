@@ -37,7 +37,7 @@ case class FlatMapInstruction(input: ExecutorInstruction, flatMapFn: Any => Iter
   def inputs = Seq(input)
 }
 
-case class FilterInstruction(input: ExecutorInstruction, filterFn: Any => Boolean) extends ExecutorInstruction{
+case class FilterInstruction(input: ExecutorInstruction, filterFn: Any => Boolean) extends ExecutorInstruction {
   def inputs = Seq(input)
 }
 
@@ -72,6 +72,14 @@ case class FinishGroupBy(input: ExecutorInstruction, keyFn: Any => Any) extends 
   def inputs = Seq(input)
 }
 
+case class FirstNInstruction(input: ExecutorInstruction, n: Int, sortFn: (Any, Any) => Boolean, executor: Int, outputId: Int) extends ExecutorInstruction {
+  def inputs = Seq(input)
+}
+
+case class FinishFirstNInstruction(input: ExecutorInstruction, n: Int, sortFn: (Any, Any) => Boolean) extends ExecutorInstruction {
+  def inputs = Seq(input)
+}
+
 case class MapValuesInstruction(input: ExecutorInstruction, mapFn: Any => Any) extends ExecutorInstruction {
   def inputs = Seq(input)
 }
@@ -84,7 +92,7 @@ case class ReduceGroupsInstruction(input: ExecutorInstruction, reduceFn: (Any, A
   def inputs = Seq(input)
 }
 
-case class CollectInstruction(input: ExecutorInstruction) extends ExecutorInstruction {
+case class CollectInstruction(input: ExecutorInstruction, limit: Option[Int]) extends ExecutorInstruction {
   def inputs = Seq(input)
 }
 
@@ -92,7 +100,7 @@ case class CountInstruction(input: ExecutorInstruction) extends ExecutorInstruct
   def inputs = Seq(input)
 }
 
-case class CollectGroupedInstruction(input: ExecutorInstruction) extends ExecutorInstruction {
+case class CollectGroupedInstruction(input: ExecutorInstruction, limit: Option[Int]) extends ExecutorInstruction {
   def inputs = Seq(input)
 }
 

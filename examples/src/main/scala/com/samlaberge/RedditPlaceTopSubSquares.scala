@@ -1,6 +1,6 @@
 package com.samlaberge
 
-object RedditPlaceApp extends DdagrApp {
+object RedditPlaceTopSubSquares extends DdagrApp {
 
 //  val ddagr = new Ddagr(DdagrOptions("backgammon.cs.utexas.edu"))
     val ddagr = new Ddagr(DdagrOptions("localhost"))

@@ -21,7 +21,9 @@ case class FlatMapTransform(input: TransformDescriptor, flatMapFn: Any => Iterab
 case class FilterTransform(input: TransformDescriptor, filterFn: Any => Boolean) extends TransformDescriptor
 case class ReduceTransform(input: TransformDescriptor, reduceFn: (Any, Any) => Any) extends TransformDescriptor
 
+case class FirstNTransform(input: TransformDescriptor, n: Int, sortFn: (Any, Any) => Boolean) extends TransformDescriptor
 case class RepartitionTransform(input: TransformDescriptor, nPartitions: Int) extends TransformDescriptor
+
 
 // TODO:
 case class GroupByTransform(input: TransformDescriptor, keyFn: Any => Any) extends TransformDescriptorGrouped
@@ -30,9 +32,8 @@ case class ReduceGroupsTransform(input: TransformDescriptorGrouped, reduceFn: (A
 case class FromKeysTransform(input: TransformDescriptorGrouped) extends TransformDescriptor
 
 // Operations
-
 case class CountOp(input: TransformDescriptor) extends OperationDescriptor
 case class CountGroupedOp(input: TransformDescriptorGrouped) extends OperationDescriptor
 
-case class CollectOp(input: TransformDescriptor) extends OperationDescriptor
-case class CollectGroupedOp(input: TransformDescriptorGrouped) extends OperationDescriptor
+case class CollectOp(input: TransformDescriptor, limit: Option[Int]) extends OperationDescriptor
+case class CollectGroupedOp(input: TransformDescriptorGrouped, limit: Option[Int]) extends OperationDescriptor

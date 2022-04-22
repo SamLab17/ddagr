@@ -21,8 +21,8 @@ trait GroupedDataset[K, T] {
     ddagr.doCountGrouped(this)
   }
 
-  def collect(): Map[K, T] = {
-    ddagr.doCollectGrouped(this)
+  def collect(limit: Option[Int] = None): Map[K, T] = {
+    ddagr.doCollectGrouped(this, limit)
   }
 
 }
