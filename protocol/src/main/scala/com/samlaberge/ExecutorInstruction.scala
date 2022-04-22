@@ -88,6 +88,14 @@ case class FromKeysInstruction(input: ExecutorInstruction) extends ExecutorInstr
   def inputs = Seq(input)
 }
 
+case class MapGroupsInstruction(input: ExecutorInstruction, mapFn: (Any, Iterator[Any]) => Any) extends ExecutorInstruction {
+  def inputs = Seq(input)
+}
+
+case class FlatMapGroupsInstruction(input: ExecutorInstruction, flatMapFn: (Any, Iterator[Any]) => IterableOnce[Any]) extends ExecutorInstruction {
+  def inputs = Seq(input)
+}
+
 case class ReduceGroupsInstruction(input: ExecutorInstruction, reduceFn: (Any, Any) => Any) extends ExecutorInstruction {
   def inputs = Seq(input)
 }

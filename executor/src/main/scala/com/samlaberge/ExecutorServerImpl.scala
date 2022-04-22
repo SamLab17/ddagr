@@ -280,6 +280,22 @@ class ExecutorServerImpl(schedulerStub: SchedulerExecutorBlockingStub) extends E
       case FromKeysInstruction(input) =>
         executeInstructions(input, clientInfo).asInstanceOf[Map[_, _]].keys.toSeq
 
+      case MapGroupsInstruction(input, mapFn) =>
+        executeInstructions(input, clientInfo)
+          .asInstanceOf[Map[_, Seq[_]]]
+          .toSeq
+          .par
+          .map{ case (k, values) => mapFn(k, values.iterator)}
+          .seq
+
+      case FlatMapGroupsInstruction(input, flatMapFn) =>
+        executeInstructions(input, clientInfo)
+          .asInstanceOf[Map[_, Seq[_]]]
+          .toSeq
+          .par
+          .flatMap{ case (k, values) => flatMapFn(k, values.iterator)}
+          .seq
+
       case ReduceGroupsInstruction(input, reduceFn) =>
         executeInstructions(input, clientInfo).asInstanceOf[Map[_, _]].view.mapValues(_.asInstanceOf[Seq[_]].reduce(reduceFn)).toSeq
 
@@ -376,12 +392,16 @@ class ExecutorServerImpl(schedulerStub: SchedulerExecutorBlockingStub) extends E
     FirstNResult(exec)
   }
 
+  def twoDecimals(n: Double): String = {
+    "%.2f" format n
+  }
+
   def handleClientFile(fileName: String, fileService: FileLookupStub): Seq[String] = {
     logDebug(s"Getting client file $fileName ...")
-    val start = System.currentTimeMillis()
+    val start = System.nanoTime()
     val res = fileService.lookupFile(fileName).get
-    val nSeconds = (System.currentTimeMillis() - start) / 1000
-    log(s"Received $fileName in $nSeconds seconds (${"%.2f" format (res.length / 1024.0 / 1024.0 / nSeconds)} MB/s)")
+    val nSeconds = (System.nanoTime() - start) / 1e9
+    log(s"Downloaded $fileName in ${twoDecimals(nSeconds)} seconds (${twoDecimals(res.length / 1024.0)}KB @ ${twoDecimals(res.length / 1024.0 / 1024.0 / nSeconds)} MB/s)")
     val lines = decompressIfNeeded(fileName, res)
     lines
   }
@@ -392,10 +412,10 @@ class ExecutorServerImpl(schedulerStub: SchedulerExecutorBlockingStub) extends E
   }
 
   def downloadFile(url: String): Array[Byte] = {
-    val start = System.currentTimeMillis()
+    val start = System.nanoTime()
     val res = IOUtils.toByteArray(new URL(url))
-    val nSeconds = (System.currentTimeMillis() - start) / 1000
-    log(s"Downloaded $url in $nSeconds seconds (${"%.2f" format (res.length / 1024.0 / 1024.0 / nSeconds)} MB/s)")
+    val nSeconds = (System.nanoTime() - start) / 1e9
+    log(s"Downloaded $url in ${twoDecimals(nSeconds)} seconds (${twoDecimals(res.length / 1024.0)}KB @ ${twoDecimals(res.length / 1024.0 / 1024.0 / nSeconds)} MB/s)")
     res
   }
 

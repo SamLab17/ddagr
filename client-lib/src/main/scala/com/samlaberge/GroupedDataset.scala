@@ -12,6 +12,16 @@ trait GroupedDataset[K, T] {
     GroupedDataset.MappedValuesDataset(ddagr, this, mapFn)
   }
 
+  def mapGroups[U](mapFn: (K, Iterator[T]) => U): Dataset[U] = {
+    ClosureCleaner.clean(mapFn)
+    Dataset.MappedGroupsDataset(ddagr, this, mapFn)
+  }
+
+  def flatMapGroups[U](flatMapFn: (K, Iterator[T]) => IterableOnce[U]): Dataset[U] = {
+    ClosureCleaner.clean(flatMapFn)
+    Dataset.FlatMappedGroupsDataset(ddagr, this, flatMapFn)
+  }
+
   def reduceGroups(reduceFn: (T, T) => T): Dataset[(K, T)] = {
     ClosureCleaner.clean(reduceFn)
     Dataset.ReducedGroupsDataset(ddagr, this, reduceFn)

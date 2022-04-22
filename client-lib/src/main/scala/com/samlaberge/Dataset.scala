@@ -43,6 +43,16 @@ trait Dataset[T] {
     TopNDataset(ddagr, this, n, lt)
   }
 
+  def firstNBy[U](n: Int, keyFn: T => U, descending: Boolean = false)(implicit ord: Ordering[U]): Dataset[T] = {
+    ClosureCleaner.clean(keyFn)
+    val ltFn = if(descending) {
+      (lhs: T, rhs: T) => ord.gt(keyFn(lhs), keyFn(rhs))
+    } else {
+      (lhs: T, rhs: T) => ord.lt(keyFn(lhs), keyFn(rhs))
+    }
+    TopNDataset(ddagr, this, n, ltFn)
+  }
+
   def collect(limit: Option[Int] = None): Seq[T] = {
     ddagr.doCollect(this, limit)
   }
@@ -76,6 +86,9 @@ object Dataset {
   case class ReducedDataset[T](ddagr: Ddagr, src: Dataset[T], reduceFn: (T, T) => T) extends Dataset[T]
   case class TopNDataset[T](ddagr: Ddagr, src: Dataset[T], n: Int, lt: (T, T) => Boolean) extends Dataset[T]
 
+
   case class FromKeysDataset[K, T](ddagr: Ddagr, src: GroupedDataset[K, T]) extends Dataset[K]
   case class ReducedGroupsDataset[K, U](ddagr: Ddagr, src: GroupedDataset[K, U], reduceFn: (U, U) => U) extends Dataset[(K, U)]
+  case class MappedGroupsDataset[K, U, T](ddagr: Ddagr, src: GroupedDataset[K, T], mapFn: (K, Iterator[T]) => U) extends Dataset[U]
+  case class FlatMappedGroupsDataset[K, U, T](ddagr: Ddagr, src: GroupedDataset[K, T], flatMapFn: (K, Iterator[T]) => IterableOnce[U]) extends Dataset[U]
 }

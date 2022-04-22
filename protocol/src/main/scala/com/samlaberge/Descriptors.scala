@@ -28,8 +28,11 @@ case class RepartitionTransform(input: TransformDescriptor, nPartitions: Int) ex
 // TODO:
 case class GroupByTransform(input: TransformDescriptor, keyFn: Any => Any) extends TransformDescriptorGrouped
 case class MapValuesTransform(input: TransformDescriptorGrouped, mapFn: Any => Any) extends TransformDescriptorGrouped
+
 case class ReduceGroupsTransform(input: TransformDescriptorGrouped, reduceFn: (Any, Any) => Any) extends TransformDescriptor
 case class FromKeysTransform(input: TransformDescriptorGrouped) extends TransformDescriptor
+case class MapGroupsTransform(input: TransformDescriptorGrouped, mapFn: (Any, Iterator[Any]) => Any) extends TransformDescriptor
+case class FlatMapGroupsTransform(input: TransformDescriptorGrouped, flatMapFn: (Any, Iterator[Any]) => IterableOnce[Any]) extends TransformDescriptor
 
 // Operations
 case class CountOp(input: TransformDescriptor) extends OperationDescriptor

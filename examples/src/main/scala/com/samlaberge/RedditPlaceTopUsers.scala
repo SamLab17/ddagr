@@ -30,7 +30,6 @@ object RedditPlaceTopUsers extends DdagrApp {
     .filter(_.split(",").length == 5)
     .map(line => {
       val split = line.split(",")
-//      val posYString = split(4)
       Row(
         time = split(0),
         user = split(1),
@@ -45,7 +44,6 @@ object RedditPlaceTopUsers extends DdagrApp {
     .firstN(50, (lhs, rhs) => lhs._2 > rhs._2)
 
   val result = transforms.collect()
-//    .sortBy(_._2 * -1)
 
   val end = System.nanoTime()
 

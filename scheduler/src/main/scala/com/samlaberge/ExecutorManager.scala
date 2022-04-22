@@ -217,6 +217,8 @@ class ExecutorManager extends Logging {
         case FromSeqSource(data) => FromSeqInputInstruction(data)
         case FromKeysTransform(input) => FromKeysInstruction(traverseGrouped(input))
         case ReduceGroupsTransform(input, reduceFn) => ReduceGroupsInstruction(traverseGrouped(input), reduceFn)
+        case MapGroupsTransform(input, mapFn) => MapGroupsInstruction(traverseGrouped(input), mapFn)
+        case FlatMapGroupsTransform(input, flatMapFn) => FlatMapGroupsInstruction(traverseGrouped(input), flatMapFn)
       }
     }
 
@@ -399,6 +401,8 @@ class ExecutorManager extends Logging {
         case MapValuesInstruction(input, m) => partition(input).map(i => MapValuesInstruction(i, m))
         case FromKeysInstruction(input) => partition(input).map(i => FromKeysInstruction(i))
         case ReduceGroupsInstruction(input, r) => partition(input).map(i => ReduceGroupsInstruction(i, r))
+        case instr: MapGroupsInstruction => partition(instr.input).map(i => instr.copy(input=i))
+        case instr: FlatMapGroupsInstruction => partition(instr.input).map(i => instr.copy(input=i))
 
         case _ => throw new IllegalArgumentException(s"Invalid instruction encountered ${instr.getClass.getName}")
       }

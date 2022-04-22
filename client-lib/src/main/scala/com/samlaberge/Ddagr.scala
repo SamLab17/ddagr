@@ -92,6 +92,8 @@ class Ddagr(options: DdagrOptions)(implicit callingObject: DdagrApp) extends Log
       case Dataset.TopNDataset(_, src, n, sortFn) => FirstNTransform(convertDataset(src), n, sortFn.asInstanceOf[(Any, Any) => Boolean])
       case Dataset.FromKeysDataset(_, src) => FromKeysTransform(convertGroupedDataset(src))
       case Dataset.ReducedGroupsDataset(_, src, reduceFn) => ReduceGroupsTransform(convertGroupedDataset(src), reduceFn.asInstanceOf[(Any, Any) => Any])
+      case Dataset.MappedGroupsDataset(_, src, mapFn) => MapGroupsTransform(convertGroupedDataset(src), mapFn.asInstanceOf[(Any, Iterator[Any]) => Any])
+      case Dataset.FlatMappedGroupsDataset(_, src, flatMapFn) => FlatMapGroupsTransform(convertGroupedDataset(src), flatMapFn.asInstanceOf[(Any, Iterator[Any]) => IterableOnce[Any]])
     }
   }
 
