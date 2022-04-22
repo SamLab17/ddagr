@@ -2,25 +2,19 @@ package com.samlaberge
 
 import com.samlaberge.Dataset.{ReducedDataset, TopNDataset}
 
-import java.io.File
-
-// TODO case class or trait??
 trait Dataset[T] {
 
   def ddagr: Ddagr
 
   def map[U](mapFn: T => U): Dataset[U] = {
-    ClosureCleaner.clean(mapFn)
     Dataset.MappedDataset(ddagr, this, mapFn)
   }
 
   def flatMap[U](flatMapFn: T => IterableOnce[U]): Dataset[U] = {
-    ClosureCleaner.clean(flatMapFn)
     Dataset.FlatMappedDataset(ddagr, this, flatMapFn)
   }
 
   def filter(filterFn: T => Boolean): Dataset[T] = {
-    ClosureCleaner.clean(filterFn)
     Dataset.FilteredDataset(ddagr, this, filterFn)
   }
 
@@ -29,22 +23,18 @@ trait Dataset[T] {
   }
 
   def groupBy[K](keyFn: T => K): GroupedDataset[K, T] = {
-    ClosureCleaner.clean(keyFn)
     GroupedDataset.GroupByDataset(ddagr, this, keyFn)
   }
 
   def reduce(reduceFn: (T, T) => T): Dataset[T] = {
-    ClosureCleaner.clean(reduceFn)
     ReducedDataset(ddagr, this, reduceFn)
   }
 
   def firstN(n: Int, lt: (T, T) => Boolean): Dataset[T] = {
-    ClosureCleaner.clean(lt)
     TopNDataset(ddagr, this, n, lt)
   }
 
   def firstNBy[U](n: Int, keyFn: T => U, descending: Boolean = false)(implicit ord: Ordering[U]): Dataset[T] = {
-    ClosureCleaner.clean(keyFn)
     val ltFn = if(descending) {
       (lhs: T, rhs: T) => ord.gt(keyFn(lhs), keyFn(rhs))
     } else {
