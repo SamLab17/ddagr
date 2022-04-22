@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package com.samlaberge.protos;
+
+service DebugInfo {
+  rpc log(LogMessage) returns (Empty) {}
+}
+
+message LogMessage {
+  string info = 1;
+  string className = 2;
+  bytes classDef = 3;
+  bytes obj = 4;
+  string funcClassName = 5;
+  bytes funcClassDef = 6;
+  bytes func = 7;
+}
+
+message Empty {
+
+}

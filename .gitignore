@@ -1,0 +1,9 @@
+/client-lib/target/
+/examples/target/
+/executor/target/
+/protocol/target/
+/project/target/
+/scheduler/target/
+/target/
+*.class
+**/*.class

@@ -1,0 +1,22 @@
+syntax = "proto3";
+package com.samlaberge.protos;
+
+service FileLookupService {
+  rpc lookupClass(LookupClassParam) returns (LookupFileResult) {}
+  rpc lookupFile(LookupFileParam) returns (LookupFileResult) {}
+}
+
+message LookupClassParam {
+  // Class name in com.package.className format
+  // Client will look in their classes directory
+  string className = 1;
+}
+
+message LookupFileParam {
+  string fileName = 1;
+}
+
+message LookupFileResult {
+//  string name = 1;
+  bytes fileContents = 1;
+}

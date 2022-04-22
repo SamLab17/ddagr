@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/client-lib.iml" filepath="$PROJECT_DIR$/.idea/modules/client-lib.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/ddagr.iml" filepath="$PROJECT_DIR$/.idea/modules/ddagr.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/ddagr-build.iml" filepath="$PROJECT_DIR$/.idea/modules/ddagr-build.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/ddagr-protocol.iml" filepath="$PROJECT_DIR$/.idea/modules/ddagr-protocol.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/examples.iml" filepath="$PROJECT_DIR$/.idea/modules/examples.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/executor.iml" filepath="$PROJECT_DIR$/.idea/modules/executor.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/scheduler.iml" filepath="$PROJECT_DIR$/.idea/modules/scheduler.iml" />
+    </modules>
+  </component>
+</project>

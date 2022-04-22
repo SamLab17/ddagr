@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module external.linked.project.id="executor [file:/Users/sam/Development/ddagr/]" external.linked.project.path="$MODULE_DIR$/../../executor" external.root.project.path="$MODULE_DIR$/../.." external.system.id="SBT" type="JAVA_MODULE" version="4">
+  <component name="NewModuleRootManager" LANGUAGE_LEVEL="JDK_17">
+    <output url="file://$MODULE_DIR$/../../executor/target/scala-2.13/classes" />
+    <output-test url="file://$MODULE_DIR$/../../executor/target/scala-2.13/test-classes" />
+    <exclude-output />
+    <content url="file://$MODULE_DIR$/../../executor">
+      <sourceFolder url="file://$MODULE_DIR$/../../executor/src/main/scala" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/../../executor/target" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module" module-name="ddagr-protocol" exported="" />
+    <orderEntry type="library" name="sbt: com.google.android:annotations:4.1.1.4:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.google.api.grpc:proto-google-common-protos:2.0.1:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.google.code.findbugs:jsr305:3.0.2:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.google.code.gson:gson:2.8.9:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.google.errorprone:error_prone_annotations:2.10.0:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.google.guava:failureaccess:1.0.1:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.google.guava:guava:31.0.1-android:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.google.j2objc:j2objc-annotations:1.3:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.google.protobuf:protobuf-java:3.19.2:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.thesamet.scalapb:lenses_2.13:0.11.10:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.thesamet.scalapb:scalapb-runtime-grpc_2.13:0.11.10:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.thesamet.scalapb:scalapb-runtime_2.13:0.11.10:jar" level="project" />
+    <orderEntry type="library" name="sbt: commons-io:commons-io:2.11.0:jar" level="project" />
+    <orderEntry type="library" name="sbt: io.grpc:grpc-api:1.45.0:jar" level="project" />
+    <orderEntry type="library" name="sbt: io.grpc:grpc-context:1.45.0:jar" level="project" />
+    <orderEntry type="library" name="sbt: io.grpc:grpc-core:1.45.0:jar" level="project" />
+    <orderEntry type="library" name="sbt: io.grpc:grpc-netty:1.45.0:jar" level="project" />
+    <orderEntry type="library" name="sbt: io.grpc:grpc-protobuf-lite:1.45.0:jar" level="project" />
+    <orderEntry type="library" name="sbt: io.grpc:grpc-protobuf:1.45.0:jar" level="project" />
+    <orderEntry type="library" name="sbt: io.grpc:grpc-stub:1.45.0:jar" level="project" />
+    <orderEntry type="library" name="sbt: io.netty:netty-buffer:4.1.72.Final:jar" level="project" />
+    <orderEntry type="library" name="sbt: io.netty:netty-codec-http2:4.1.72.Final:jar" level="project" />
+    <orderEntry type="library" name="sbt: io.netty:netty-codec-http:4.1.72.Final:jar" level="project" />
+    <orderEntry type="library" name="sbt: io.netty:netty-codec-socks:4.1.72.Final:jar" level="project" />
+    <orderEntry type="library" name="sbt: io.netty:netty-codec:4.1.72.Final:jar" level="project" />
+    <orderEntry type="library" name="sbt: io.netty:netty-common:4.1.72.Final:jar" level="project" />
+    <orderEntry type="library" name="sbt: io.netty:netty-handler-proxy:4.1.72.Final:jar" level="project" />
+    <orderEntry type="library" name="sbt: io.netty:netty-handler:4.1.72.Final:jar" level="project" />
+    <orderEntry type="library" name="sbt: io.netty:netty-resolver:4.1.72.Final:jar" level="project" />
+    <orderEntry type="library" name="sbt: io.netty:netty-tcnative-classes:2.0.46.Final:jar" level="project" />
+    <orderEntry type="library" name="sbt: io.netty:netty-transport:4.1.72.Final:jar" level="project" />
+    <orderEntry type="library" name="sbt: io.perfmark:perfmark-api:0.23.0:jar" level="project" />
+    <orderEntry type="library" name="sbt: org.apache.commons:commons-lang3:3.12.0:jar" level="project" />
+    <orderEntry type="library" name="sbt: org.apache.xbean:xbean-asm9-shaded:4.20:jar" level="project" />
+    <orderEntry type="library" name="sbt: org.checkerframework:checker-compat-qual:2.5.5:jar" level="project" />
+    <orderEntry type="library" name="sbt: org.checkerframework:checker-qual:3.12.0:jar" level="project" />
+    <orderEntry type="library" name="sbt: org.codehaus.mojo:animal-sniffer-annotations:1.19:jar" level="project" />
+    <orderEntry type="library" name="sbt: org.scala-lang.modules:scala-collection-compat_2.13:2.6.0:jar" level="project" />
+    <orderEntry type="library" name="sbt: org.scala-lang.modules:scala-parallel-collections_2.13:1.0.4:jar" level="project" />
+    <orderEntry type="library" name="sbt: org.scala-lang:scala-library:2.13.8:jar" level="project" />
+  </component>
+</module>

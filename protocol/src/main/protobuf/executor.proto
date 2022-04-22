@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+package com.samlaberge.protos;
+
+service Executor {
+ rpc getSysInfo(google.protobuf.Empty) returns (ExecutorSysInfo) {}
+
+  // Called by Scheduler
+  rpc runTask(TaskParam) returns (TaskResult) {}
+  rpc newClientSession(NewClientSessionParams) returns (google.protobuf.Empty) {}
+  rpc endClientSession(EndClientSessionParams) returns (google.protobuf.Empty) {}
+
+  // Called by other executors
+  rpc sendIntermediateData(SendIntermediateParam) returns (google.protobuf.Empty) {}
+}
+
+message ExecutorSysInfo {
+  string hostname = 1;
+  int32 nCpus = 2;
+  // max memory = used + free
+  int64 maxMemSize = 3;
+  int64 freeMemory = 4;
+}
+
+message NewClientSessionParams {
+  int32 clientId = 1;
+//  string clientIp = 2;
+//  int32 clientPort = 3;
+}
+
+message EndClientSessionParams {
+  int32 clientId = 1;
+}
+
+message TaskParam {
+  int32 clientId = 1;
+//  bytes input = 2;
+  bytes operation = 3;
+//  int32 outputId = 4;
+//  bool persistOutput = 5;
+//  bool returnOutput = 6;
+  // If this is a partition task, these are the executors
+  // to spread the data onto
+//  repeated int32 executorIdsForPartition = 7;
+  // Executor should send message asking for executors.
+}
+
+//message PartitionsForExecutor {
+//  int32 executorId = 1;
+//  repeated int32 partitionIds = 2;
+//}
+
+message TaskResult {
+//  enum ResultStatus {
+//    SUCCESS = 0;
+//    TERMINATED = 1;
+//  }
+//  ResultStatus status = 1;
+  bytes output = 2; // instanceof OperationResult
+  // If operation was a shuffle, include locations of resulting partition Ids
+//  repeated PartitionsForExecutor executorPartitions = 3;
+}
+
+message SendIntermediateParam {
+  int32 clientId = 1;
+  int32 intermediateId = 2;
+  bytes data = 3;
+}

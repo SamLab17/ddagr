@@ -1,0 +1,97 @@
+syntax = "proto3";
+
+package com.samlaberge.protos;
+import "google/protobuf/empty.proto";
+
+
+service SchedulerClient {
+  rpc clientInit(DdagrClientInitParams) returns (DdagrClientInitResult) {}
+  rpc executeOperation(ExecuteOperationParams) returns (ExecuteOperationResult) {}
+  rpc clientDisconnect(ClientDisconnectParams) returns (google.protobuf.Empty) {}
+}
+
+service SchedulerExecutor {
+  rpc executorInit(ExecutorInitParams) returns (ExecutorInitResult) {}
+  rpc getExecutorsInfo(ExecutorInfoParams) returns (ExecutorInfoResult) {}
+  rpc requestExecutorsForPartition(ExecutorPartitionParams) returns (ExecutorPartitionResult) {}
+  rpc lookupClientFile(LookupClientFileParams) returns (LookupClientFileContents) {}
+//  rpc getNewPartitionId(GetPartitionIdParams) returns (GetPartitionIdResult) {}
+}
+
+message DdagrClientInitParams {
+ /* Spec/config options for this client? */
+  int32 clientFileServicePort = 1;
+  string clientIp = 2;
+}
+
+message DdagrClientInitResult {
+  int32 clientId = 1;
+  int32 fileServerPort = 2;
+}
+
+message ExecuteOperationParams {
+  // Like classes, executors will ask for input files when they're needed.
+  // client can upload them then.
+//  bytes input = 1;
+  int32 myId = 1;
+  bytes operation = 2;
+//  bytes dagSpec = 2;
+}
+
+message ExecuteOperationResult {
+//  enum TaskResultState {
+//    SUCCESS = 0;
+//    FAILED = 1;
+//  }
+  bytes resultData = 1;
+}
+
+message ClientDisconnectParams {
+  int32 clientId = 1;
+}
+
+message ExecutorInitParams {
+ string executorIp = 1;
+ int32 port = 2;
+}
+
+message ExecutorInitResult {
+  int32 executorId = 1;
+}
+
+message ExecutorInfoParams {
+  repeated int32 executorIds = 1;
+}
+
+message ExecutorInfo {
+  int32 executorId = 1;
+  string executorIp = 2;
+  int32 executorPort = 3;
+  int32 nCpus = 4;
+  int64 freeMem = 5;
+}
+
+message ExecutorInfoResult {
+  repeated ExecutorInfo executors = 1;
+}
+
+message ExecutorPartitionParams {
+  // Client id for job being executed
+  int32 clientId = 1;
+  int32 myId = 2;
+  int32 maxNumPartitions = 3;
+}
+
+message ExecutorPartitionResult {
+  repeated int32 executorIds = 1;
+}
+
+message LookupClientFileParams {
+ int32 clientId = 1;
+ bool isClass = 2;
+ string fileName = 3;
+}
+
+message LookupClientFileContents {
+ bytes fileContents = 1;
+}
