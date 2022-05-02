@@ -1,14 +1,10 @@
 
-const N = 50
+const N = 500
 let soFar = 0
-let page = 0
 let books = []
 let urls = []
 
 function handlePage(data) {
-	//console.log(data)
-	//console.log(`Page ${page}`)
-	page++
 	const res = data["results"]
 	// Sort in descending order download count
 	res.sort((o1, o2) => (o2["download_count"] - o1["download_count"]))
@@ -22,15 +18,16 @@ function handlePage(data) {
 
 	books.push(...topN.map(o => o["title"]))
 	urls.push(...topN.map(o => o["formats"][txtFormat]))
-	//console.log(topN.map(o => o["title"]))
-	//console.log(topN.map(o => o["formats"][txtFormat]))
 
 	if(soFar < N) {
+		console.log(`(${soFar}/${N})`)
 		return fetch(data["next"]).then(resp => resp.json()).then(handlePage)
 	} else {
 		console.log(`Top ${N} books`)
-		console.log(books)
-		console.log(urls)
+		console.dir(books, {'maxArrayLength': null})
+		console.dir(urls, {'maxArrayLength': null})
+
+		console.log(`Last download count: ${topN.pop()["download_count"]}`)
 	}
 }
 

@@ -7,31 +7,28 @@ import com.samlaberge.protos.scheduler._
 import io.grpc.{ManagedChannel, ManagedChannelBuilder}
 
 import java.io.{File, FileNotFoundException}
-import java.net.{InetAddress, URL}
+import java.net.URL
 
 
-class Ddagr(options: DdagrOptions)(implicit callingObject: DdagrApp) extends Logging {
+class Ddagr(scheduler: String)(implicit callingObject: DdagrApp) extends Logging {
 
   // Start up Ddagr client
 
   // Init with scheduler
   /*_*/
   private val channel: ManagedChannel = ManagedChannelBuilder
-    .forAddress(options.schedulerIp, options.schedulerPort)
+    .forAddress(scheduler, PORTS.SCHEDULER_CLIENT_SERVER)
     .maxInboundMessageSize(MAX_MESSAGE_SIZE)
     .usePlaintext()
     .build
   /*_*/
   private val schedulerStub: SchedulerClientBlockingStub = SchedulerClientGrpc.blockingStub(channel)
   private val initResult: DdagrClientInitResult = schedulerStub.clientInit(
-    DdagrClientInitParams(
-      clientFileServicePort = options.localPort,
-      clientIp = InetAddress.getLocalHost.getHostAddress,
-    )
+    DdagrClientInitParams()
   )
 
   private val classDir = callingObject.getClass.getProtectionDomain.getCodeSource.getLocation.getPath
-  private val fileClient = new FileLookupClient(options.schedulerIp, initResult.fileServerPort, classDir)
+  private val fileClient = new FileLookupClient(scheduler, initResult.fileServerPort, classDir)
   private var cleanedUp = false
 
   sys addShutdownHook {
@@ -43,7 +40,7 @@ class Ddagr(options: DdagrOptions)(implicit callingObject: DdagrApp) extends Log
     schedulerStub.clientDisconnect(ClientDisconnectParams(initResult.clientId))
     fileClient.stopServer()
     cleanedUp = true
-    System.exit(0)
+//    System.exit(0)
   }
 
   def from[T](data: Seq[T]): Dataset[T] = {
@@ -72,8 +69,9 @@ class Ddagr(options: DdagrOptions)(implicit callingObject: DdagrApp) extends Log
     Dataset.UrlTextFile(this, fileUrl)
   }
 
-  def multipleUrlTextFiles(fileUrls: Seq[String]): Dataset[String] = {
-    fileUrls.foreach(url => new URL(url).openStream().close())
+  def urlTextFiles(fileUrls: Seq[String]): Dataset[String] = {
+    // Checks URLs for validity, but this check is _slow_
+//    fileUrls.foreach(url => new URL(url).openStream().close())
     Dataset.MultipleUrlTextFiles(this, fileUrls)
   }
 
@@ -155,9 +153,3 @@ class Ddagr(options: DdagrOptions)(implicit callingObject: DdagrApp) extends Log
   }
 
 }
-
-case class DdagrOptions(
-  schedulerIp: String,
-  schedulerPort: Int = PORTS.SCHEDULER_CLIENT_SERVER,
-  localPort: Int = PORTS.CLIENT_PORT,
-)

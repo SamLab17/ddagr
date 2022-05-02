@@ -2,28 +2,15 @@ package com.samlaberge
 
 object RedditPlaceTopSubSquares extends DdagrApp {
 
-//  val ddagr = new Ddagr(DdagrOptions("backgammon.cs.utexas.edu"))
-    val ddagr = new Ddagr(DdagrOptions("localhost"))
+//  val host = sys.env.getOrElse("SCHEDULER", "localhost")
+  val host = "frosted-mini-wheats.cs.utexas.edu"
+  val ddagr = new Ddagr(host)
 
-  val nUrls = 3
+  val urls = RedditRPlaceUrls.urls.take(20)
 
-  def getUrl(n: Int): String = {
-    val nChars = 12
-    s"https://placedata.reddit.com/data/canvas-history/2022_place_canvas_history-${s"%0${nChars}d" format n}.csv.gzip"
-  }
-
-  val urls = RedditRPlaceUrls.urls.slice(0, nUrls)
-
-//  val urls = 0 until nUrls map getUrl
-  println(s"Using the following ${nUrls} file(s): ")
-  println(urls.mkString("\n"))
-
-  val ds = ddagr.multipleUrlTextFiles(urls)
+  val ds = ddagr.urlTextFiles(urls)
 
   case class Row(
-    time: String,
-    user: String,
-    color: String,
     posX: Int,
     posY: Int
   )
@@ -35,11 +22,7 @@ object RedditPlaceTopSubSquares extends DdagrApp {
     .filter(_.split(",").length == 5)
     .map(line => {
       val split = line.split(",")
-//      val posYString = split(4)
       Row(
-        time = split(0),
-        user = split(1),
-        color = split(2),
         posX = split(3).replaceAll("\"", "").toInt / 50 * 50,
         posY = split(4).replaceAll("\"", "").toInt / 50 * 50
       )
@@ -47,23 +30,24 @@ object RedditPlaceTopSubSquares extends DdagrApp {
     .groupBy(r => {
       (r.posX, r.posY)
     })
-    .mapValues(_ => 1)
-    .reduceGroups(_ + _)
-    .filter(_._2 > 20000)
+    .mapGroups((pos, entries) => (pos, entries.size))
+    .firstNBy(500, _._2, descending = true)
 
   val result = transforms.collect()
-    .sortBy(_._2 * -1)
-
+  //  val result = transforms.count()
+  //  println(s"Num entries: ${result}")
   val end = System.nanoTime()
 
-  println(s"Most popular 50x50 regions in r/place: ${result.mkString("\n")}")
-
-  println(s"Num elements: ${result.size}")
-  println(s"Max: ${result.maxBy(_._2)}")
-  println(s"Min: ${result.minBy(_._2)}")
-  println(s"Result hashcode: ${result.hashCode()}")
-
-  println(s"Total elapsed time: ${(end - start) / 1e9} seconds")
+  //    println(s"Most popular 50x50 regions in r/place: ${result.mkString("\n")}")
+  //
+  //    println(s"Num elements: ${result.size}")
+  //    println(s"Max: ${result.maxBy(_._2)}")
+  //    println(s"Min: ${result.minBy(_._2)}")
+  //    println(s"Result hashcode: ${result.hashCode()}")
+  //
+  //    println(s"Total elapsed time: ${(end - start) / 1e9} seconds")
+  println(s"${(end - start) / 1e9} seconds")
 
   ddagr.exit()
+
 }

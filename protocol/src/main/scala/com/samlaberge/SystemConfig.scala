@@ -22,5 +22,5 @@ object SystemConfig {
   }
 
   // 2 gigabytes
-  val MAX_MESSAGE_SIZE = Int.MaxValue
+  val MAX_MESSAGE_SIZE: Int = Int.MaxValue
 }

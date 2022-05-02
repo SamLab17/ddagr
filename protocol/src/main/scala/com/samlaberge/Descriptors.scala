@@ -2,10 +2,12 @@ package com.samlaberge
 
 // TransformDescriptors create a new dataset as a result. May have an input (no input if data source)
 trait TransformDescriptor {}
+
+// TransformDescriptorGrouped yield GroupedDatasets as a result
 trait TransformDescriptorGrouped {}
 
-
-// Operations trigger computation, typically the result of one or more transformations
+// Operations trigger computation, typically the result of one or more transformations. There are the top-level
+// operations which contain transformations
 trait OperationDescriptor {}
 
 // Data Sources
@@ -24,8 +26,6 @@ case class ReduceTransform(input: TransformDescriptor, reduceFn: (Any, Any) => A
 case class FirstNTransform(input: TransformDescriptor, n: Int, sortFn: (Any, Any) => Boolean) extends TransformDescriptor
 case class RepartitionTransform(input: TransformDescriptor, nPartitions: Int) extends TransformDescriptor
 
-
-// TODO:
 case class GroupByTransform(input: TransformDescriptor, keyFn: Any => Any) extends TransformDescriptorGrouped
 case class MapValuesTransform(input: TransformDescriptorGrouped, mapFn: Any => Any) extends TransformDescriptorGrouped
 

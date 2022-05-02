@@ -17,16 +17,73 @@ SCP = "/usr/bin/scp"
 SSH = "/usr/bin/ssh"
 SBT = "/Users/sam/Library/Application Support/Coursier/bin/sbt"
 
-SKIP_HOSTS=["apple-jacks"]
+GOOD_EXECUTORS = [
+    "ens31np",
+    "brittle-star",
+    "fichte",
+    "crinoid",
+    "cancer",
+    "marx",
+    "magenta",
+    "locke",
+    "king-of-tokyo",
+    "hi-ho-cherry-o",
+    "descartes",
+    "bodhidharma",
+    "leibniz",
+    "hegel",
+    "camelopardalis",
+    "cyan",
+    "dolpopa",
+    "delphinus",
+    "clank",
+    "canis-major",
+    "bourdieu",
+    "equuleus",
+    "epicurus",
+    "dorado",
+    "chess",
+    "aristotle",
+    "hayek"
+]
+
+SKIP_HOSTS=[
+    "apple-jacks",
+    "crazy-cow",
+    "count-chocula",
+    "cookie-crisp",
+    "chocapic",
+    "frosted-mini-wheats",
+    "capn-crunch",
+    "cracklin-oat-bran",
+    "cocoa-puffs",
+    "freakies",
+    "froot-loops",
+    "crispix",
+    "corn-flakes",
+    "grape-nuts",
+    "fruit-brute",
+    "golden-grahams",
+    "fruity-pebbles",
+    "green-slime",
+    "honey-ohs",
+    "honey-monster-puffs",
+    "honey-bunches-of-oats",
+]
+
 
 schedulerJar = "scheduler-assembly-0.1.0-SNAPSHOT.jar"
 executorJar = "executor-assembly-0.1.0-SNAPSHOT.jar"
 
+# scheduler = "frosted-mini-wheats"
+
 def assemble():
     print("Assembling jar files...")
-    proc = subprocess.run([SBT, "assembly"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = subprocess.run([SBT, "scheduler/assembly; executor/assembly"], 
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if proc.returncode != 0:
-        print(proc.stderr)
+        print(proc.stdout.decode("utf-8"))
+        print(proc.stderr.decode("utf-8"))
         exit(1)
 
 def transfer():
@@ -63,10 +120,16 @@ def execute(hosts):
 
     # Run scheduler and give it a few seconds to fully start up
     sshRun(scheduler, scheduler_command)
-    sleep(2.0)
+    sleep(5.0)
 
     toRun = [(e, executor_command) for e in executors]
     procs = [sshRun(m, c) for (m, c) in toRun]
+
+def getHosts(n):
+    res = []
+    for i in range(min(n, len(GOOD_EXECUTORS))):
+        res.append(GOOD_EXECUTORS[i])
+    return res
 
 def findHosts(n):
     url = 'https://apps.cs.utexas.edu/unixlabstatus/'
@@ -115,16 +178,28 @@ def findHosts(n):
 
 def main():
 
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('numExec', type=int)
+    parser.add_argument('--scheduler', default=None)
+    parser.add_argument('--fast', action=argparse.BooleanOptionalAction)
+
+    args = parser.parse_args()
+
     if len(sys.argv) < 2:
         print(f"usage: {sys.argv[0]} <num hosts>")
         exit(1)
-    nHosts = int(sys.argv[1]) 
 
-    assemble()
-    transfer()
-    hosts = findHosts(nHosts)
+    if not args.fast:
+        assemble()
+        transfer()
+
+    # hosts = findHosts(args.numExec)
+    hosts = getHosts(args.numExec)
+    if args.scheduler:
+        hosts = [args.scheduler] + hosts
+
     execute(hosts)
-
 
 if __name__ == "__main__":
     main()

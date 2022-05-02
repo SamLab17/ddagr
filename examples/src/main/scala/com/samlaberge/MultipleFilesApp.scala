@@ -13,9 +13,9 @@ object MultipleFilesApp extends DdagrApp {
   println(s"Using the following ${nUrls} file(s): ")
   println(urls.mkString("\n"))
 
-  val ddagr = new Ddagr(DdagrOptions("localhost"))
+  val ddagr = new Ddagr("localhost")
 
-  val ds = ddagr.multipleUrlTextFiles(urls)
+  val ds = ddagr.urlTextFiles(urls)
 
   println(ds.filter(_.nonEmpty).count())
 }

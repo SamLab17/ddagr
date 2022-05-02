@@ -8,7 +8,7 @@ object LocalFilesApp extends DdagrApp {
 //  println(this.getClass.getName)
 //  println(this.getClass.getProtectionDomain.getCodeSource.getLocation.getPath)
 
-  val ddagr = new Ddagr(DdagrOptions("localhost"))
+  val ddagr = new Ddagr("booberry.cs.utexas.edu")
 
 //  case class Row(name: String, age: Int)
 //  case class MappedRow(firstName: String, lastName: String, age: Int)

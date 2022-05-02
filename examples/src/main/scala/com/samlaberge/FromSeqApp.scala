@@ -2,7 +2,7 @@ package com.samlaberge
 
 object FromSeqApp extends DdagrApp {
 
-  val ddagr = new Ddagr(DdagrOptions("localhost"))
+  val ddagr = new Ddagr("localhost")
 
   val data = Seq("hello", "world", "this", "is", "my", "simple", "dataset", "of", "strings")
 

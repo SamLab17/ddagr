@@ -2,7 +2,7 @@ package com.samlaberge
 
 object RedditRPlaceUrls {
 
-  val prefix = "https://www.samlaberge.com/ddagr-data/2022_place_canvas_history-"
+  val prefix = "https://samlab-ddagr-data.s3.amazonaws.com/2022_place_canvas_history-"
   val suffix = ".csv.gzip"
   val formatNum = (n: Int) => "%012d" format n
   val N = 25

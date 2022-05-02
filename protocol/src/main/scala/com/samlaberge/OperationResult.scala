@@ -1,6 +1,9 @@
 package com.samlaberge
 
+// The result of a stage executed on an executor.
 sealed trait OperationResult {
+  // When multiple executors are executing the same stage, we need to combine their
+  // results together somehow.
   def combineWith(other: OperationResult): OperationResult
 }
 

@@ -11,8 +11,6 @@ import scala.concurrent.ExecutionContext
 
 object ExecutorMain extends App with Logging {
 
-  // TODO port should be an environment variable, so multiple executors can be run on the same machine (for testing)
-
   val port = sys.env.getOrElse("PORT", PORTS.EXECUTOR_SERVER_DEFAULT).toString.toInt
   val schedulerHost = sys.env.getOrElse("SCHEDULER", "localhost")
 
@@ -25,24 +23,33 @@ object ExecutorMain extends App with Logging {
   log(s"scheduler host : $schedulerHost")
 
   // Stub to scheduler server
-  val channel: ManagedChannel = ManagedChannelBuilder.forAddress(schedulerHost, PORTS.SCHEDULER_EXECUTOR_SERVER).usePlaintext().build
+  /*_*/
+  val channel: ManagedChannel = ManagedChannelBuilder
+    .forAddress(schedulerHost, PORTS.SCHEDULER_EXECUTOR_SERVER)
+    .usePlaintext()
+    .build
+  /*_*/
   val schedulerStub = SchedulerExecutorGrpc.blockingStub(channel)
 
+  val executorServer = new ExecutorServerImpl(schedulerStub)
+
   // Start executor server
+  /*_*/
   val server : Server = ServerBuilder.forPort(port).maxInboundMessageSize(MAX_MESSAGE_SIZE)
-//    .executor(concurrent.Executors.newFixedThreadPool(Runtime.getRuntime.availableProcessors()))
-    .addService(ExecutorGrpc.bindService(new ExecutorServerImpl(schedulerStub), ExecutionContext.global))
+    .executor(concurrent.Executors.newFixedThreadPool(Runtime.getRuntime.availableProcessors()))
+    .addService(ExecutorGrpc.bindService(executorServer, ExecutionContext.global))
     .build
+  /*_*/
 
   server.start()
 
-
   // Connect to scheduler
   try {
-    schedulerStub.executorInit(ExecutorInitParams(
+    val myId = schedulerStub.executorInit(ExecutorInitParams(
       executorIp = InetAddress.getLocalHost.getHostAddress,
       port = port,
-    ))
+    )).executorId
+    executorServer.setMyId(myId)
   } catch {
     case e: StatusRuntimeException => {
       logErr(s"Could not connect to the scheduler (ip=${schedulerHost}, port=${PORTS.SCHEDULER_EXECUTOR_SERVER})", e)

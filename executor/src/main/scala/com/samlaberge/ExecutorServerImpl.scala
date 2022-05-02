@@ -3,7 +3,7 @@ package com.samlaberge
 import com.google.protobuf.empty.Empty
 import com.samlaberge.SystemConfig.MAX_MESSAGE_SIZE
 import com.samlaberge.Util._
-import com.samlaberge.protos.executor.ExecutorGrpc.{ExecutorStub, stub}
+import com.samlaberge.protos.executor.ExecutorGrpc.ExecutorStub
 import com.samlaberge.protos.executor._
 import com.samlaberge.protos.scheduler.SchedulerExecutorGrpc.SchedulerExecutorBlockingStub
 import com.samlaberge.protos.scheduler.{ExecutorInfoParams, ExecutorPartitionParams, LookupClientFileParams}
@@ -25,8 +25,6 @@ import scala.io.Source
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
-// This server is highly multi-threaded, will need to be thread-safe.
-
 class ExecutorServerImpl(schedulerStub: SchedulerExecutorBlockingStub) extends ExecutorGrpc.Executor with Logging {
   override def getSysInfo(request: Empty): Future[ExecutorSysInfo] = {
     Future.successful(ExecutorSysInfo(
@@ -36,6 +34,12 @@ class ExecutorServerImpl(schedulerStub: SchedulerExecutorBlockingStub) extends E
       freeMemory = Runtime.getRuntime.freeMemory()
     ))
 
+  }
+
+  private var myId: Int = -1
+
+  def setMyId(myId: Int): Unit = {
+    this.myId = myId
   }
 
   case class ClientInfo(
@@ -73,9 +77,7 @@ class ExecutorServerImpl(schedulerStub: SchedulerExecutorBlockingStub) extends E
 
 
   override def newClientSession(request: NewClientSessionParams): Future[Empty] = {
-    // Connect to client's file service for file/class resolution
-    //    val clientChannel = ManagedChannelBuilder.forAddress(request.clientIp, request.clientPort).usePlaintext().build
-    //    val fileStub = FileLookupServiceGrpc.blockingStub(clientChannel)
+    // Create a FileLookupStub from our gRPC stubs to the scheduler
     val fileStub = new FileLookupStub {
       override def lookupFile(fileName: String): Option[Array[Byte]] = {
         try {
@@ -307,6 +309,21 @@ class ExecutorServerImpl(schedulerStub: SchedulerExecutorBlockingStub) extends E
 
   val MIN_PARTITION_SIZE = 1
 
+  def sendDataTo(eid: Int, data: Seq[_], outputId: Int, clientId: Int): Future[Empty] = {
+    if(eid == myId) {
+      receiveData(data, clientId, outputId)
+      Future.successful(Empty())
+    } else {
+      val stub = getStubFor(eid)
+      stub.sendIntermediateData(SendIntermediateParam(
+        clientId,
+        outputId,
+        serialize(data)
+      ))
+    }
+  }
+
+
   def handleRepartition(input: Seq[_], n: Int, outputId: Int, clientInfo: ClientInfo): RepartitionOpResult = {
     // Ask for executors
     val nPartitions = n min (input.size / MIN_PARTITION_SIZE)
@@ -324,20 +341,13 @@ class ExecutorServerImpl(schedulerStub: SchedulerExecutorBlockingStub) extends E
 
     var i = 0
     val futures = executors.map(eid => {
-      val executorStub = getStubFor(eid)
-
       logDebug(s"Sending intermediate data to executor $eid"
         + s"(size<=$sizePerExecutor, clientId= ${clientInfo.id}, intermediateId=$outputId)")
 
       val data = input.slice(i * sizePerExecutor, (i + 1) * sizePerExecutor min input.size)
       i = i + 1
 
-      executorStub.sendIntermediateData(
-        SendIntermediateParam(
-          clientInfo.id,
-          outputId,
-          serialize(data)
-        ))
+      sendDataTo(eid, data, outputId, clientInfo.id)
     })
 
     // Now wait on all of the transfers to complete.
@@ -375,9 +385,10 @@ class ExecutorServerImpl(schedulerStub: SchedulerExecutorBlockingStub) extends E
 
     val futures = groupedByDestination.map {
       case (eid, data) =>
-        val stub = getStubFor(eid)
         logDebug(s"Sending ${data.size} entries to $eid")
-        stub.sendIntermediateData(SendIntermediateParam(clientInfo.id, outputId, serialize(data.seq)))
+        sendDataTo(eid, data.seq, outputId, clientInfo.id)
+//        val stub = getStubFor(eid)
+//        stub.sendIntermediateData(SendIntermediateParam(clientInfo.id, outputId, serialize(data.seq)))
     }
 
     Await.result(Future.sequence(futures), Duration.Inf)
@@ -432,6 +443,19 @@ class ExecutorServerImpl(schedulerStub: SchedulerExecutorBlockingStub) extends E
     }
   }
 
+  def receiveData(data: Seq[_], clientId: Int, outputId: Int): Unit = {
+    val clientInfo = clientInfos.get(clientId)
+    val persist = clientInfo.intermediateOutputs
+    var persistData = data
+    persist.synchronized {
+      if (persist.containsKey(outputId)) {
+        // Concatenate the two
+        persistData = persist.get(outputId).asInstanceOf[Seq[_]] ++ persistData
+      }
+      persist.put(outputId, persistData)
+    }
+  }
+
   // Receiving partition from another executor
   override def sendIntermediateData(request: SendIntermediateParam): Future[Empty] = {
     val clientInfo = clientInfos.get(request.clientId)
@@ -445,15 +469,8 @@ class ExecutorServerImpl(schedulerStub: SchedulerExecutorBlockingStub) extends E
       request.intermediateId
     })")
 
-    persist.synchronized {
-      if (persist.containsKey(request.intermediateId)) {
-        // Concatenate the two
-        partitionData = persist.get(request.intermediateId).asInstanceOf[Seq[_]] ++ partitionData
-      }
-      persist.put(request.intermediateId, partitionData)
-      Future.successful(Empty())
-    }
-
+    receiveData(partitionData, request.clientId, request.intermediateId)
+    Future.successful(Empty())
   }
 
 }

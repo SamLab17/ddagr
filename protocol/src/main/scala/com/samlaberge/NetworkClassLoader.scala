@@ -1,5 +1,11 @@
 package com.samlaberge
 
+/**
+ * Class loader which uses a provided file lookup stub to lookup any classes which cannot
+ * be found locally.
+ * @param parent parent class loader, will consult them first to see if we need to go to the network
+ * @param fileService stub used to lookup class files.
+ */
 class NetworkClassLoader(parent: ClassLoader, fileService: FileLookupStub) extends ClassLoader(parent) {
 
   override def findClass(name: String): Class[_] = {

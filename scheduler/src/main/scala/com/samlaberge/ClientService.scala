@@ -8,7 +8,6 @@ import scala.concurrent.Future
 import Util._
 import com.google.protobuf.empty.Empty
 import com.samlaberge.SystemConfig.PORTS
-import io.grpc.Context
 
 /**
  * Service used by client to communicate with scheduler.
@@ -17,8 +16,6 @@ import io.grpc.Context
 class ClientService(executorManager: ExecutorManager) extends SchedulerClientGrpc.SchedulerClient with Logging {
 
   case class ClientInfo(
-    clientIp: String,
-    clientPort: Int,
     fileService: FileLookupServer,
     clientClassLoader: ClassLoader,
   )
@@ -38,11 +35,7 @@ class ClientService(executorManager: ExecutorManager) extends SchedulerClientGrp
       fileServerPort
     )
 
-    logDebug(s"New client connected (ip=${request.clientIp})")
-
-    // Set up file service connection with client.
-    //    val clientChannel = ManagedChannelBuilder.forAddress(request.clientIp, request.clientFileServicePort).usePlaintext().build
-    //    val fileStub = FileLookupServiceGrpc.blockingStub(clientChannel)
+    logDebug(s"New client connected.")
 
     val fileServer = new FileLookupServer(fileServerPort)
 
@@ -51,8 +44,6 @@ class ClientService(executorManager: ExecutorManager) extends SchedulerClientGrp
     val classLoader = new NetworkClassLoader(parentCL, fileServer)
     clients += (clientId ->
       ClientInfo(
-        request.clientIp,
-        request.clientFileServicePort,
         fileServer,
         classLoader)
       )

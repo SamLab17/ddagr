@@ -24,6 +24,7 @@
     <orderEntry type="library" name="sbt: com.thesamet.scalapb:lenses_2.13:0.11.10:jar" level="project" />
     <orderEntry type="library" name="sbt: com.thesamet.scalapb:scalapb-runtime-grpc_2.13:0.11.10:jar" level="project" />
     <orderEntry type="library" name="sbt: com.thesamet.scalapb:scalapb-runtime_2.13:0.11.10:jar" level="project" />
+    <orderEntry type="library" name="sbt: commons-io:commons-io:2.11.0:jar" level="project" />
     <orderEntry type="library" name="sbt: io.grpc:grpc-api:1.45.0:jar" level="project" />
     <orderEntry type="library" name="sbt: io.grpc:grpc-context:1.45.0:jar" level="project" />
     <orderEntry type="library" name="sbt: io.grpc:grpc-core:1.45.0:jar" level="project" />

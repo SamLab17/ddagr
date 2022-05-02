@@ -73,7 +73,8 @@ lazy val `client-lib` =
         library.protocol,
         library.scalaTest  % Test,
         library.apacheCommonsLang,
-        library.apacheXbeanAsm
+        library.apacheXbeanAsm,
+        library.commonsIO
       )
     )
 

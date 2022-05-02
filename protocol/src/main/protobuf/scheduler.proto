@@ -20,8 +20,6 @@ service SchedulerExecutor {
 
 message DdagrClientInitParams {
  /* Spec/config options for this client? */
-  int32 clientFileServicePort = 1;
-  string clientIp = 2;
 }
 
 message DdagrClientInitResult {

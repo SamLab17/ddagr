@@ -1,7 +1,7 @@
 package com.samlaberge
 
 object GroupByApp extends DdagrApp {
-  val ddagr = new Ddagr(DdagrOptions("localhost"))
+  val ddagr = new Ddagr("localhost")
 
   val ds = ddagr.from(1 to 15).groupBy(_ % 5)
 

@@ -1,5 +1,7 @@
 package com.samlaberge
 
+// An instruction to run on an executor.
+// Forms an expression tree with other instructions.
 sealed trait ExecutorInstruction {
   // The inputs for this instruction, if any
   def inputs: Seq[ExecutorInstruction]

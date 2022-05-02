@@ -2,7 +2,7 @@ package com.samlaberge
 
 object ReduceApp extends DdagrApp {
 
-  val ddagr = new Ddagr(DdagrOptions("localhost"))
+  val ddagr = new Ddagr("localhost")
 
   val n = 1000
   val expectedSum = (n * (n+1)) / 2

@@ -3,7 +3,7 @@ package com.samlaberge
 object RedditPlaceTopUsers extends DdagrApp {
 
 //  val ddagr = new Ddagr(DdagrOptions("backgammon.cs.utexas.edu"))
-    val ddagr = new Ddagr(DdagrOptions("localhost"))
+    val ddagr = new Ddagr("localhost")
 
   val nUrls = 4
 
@@ -13,7 +13,7 @@ object RedditPlaceTopUsers extends DdagrApp {
   println(s"Using the following ${nUrls} file(s): ")
   println(urls.mkString("\n"))
 
-  val ds = ddagr.multipleUrlTextFiles(urls)
+  val ds = ddagr.urlTextFiles(urls)
 
   case class Row(
     time: String,

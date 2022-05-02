@@ -7,7 +7,6 @@ import java.nio.file.Files
 class FileLookupClient(serverHost: String, serverPort: Int, classDir: String) extends Logging {
 
   private val thread: Thread = new Thread(() => {
-//    logDebug(s"File Lookup client connecting to $serverHost:$serverPort")
     val socket = new Socket(serverHost, serverPort)
     logDebug(s"Connected to file lookup server!")
 
@@ -16,7 +15,6 @@ class FileLookupClient(serverHost: String, serverPort: Int, classDir: String) ex
     try {
       while(true) {
         val request = ois.readObject().asInstanceOf[FileLookupRequest]
-//        logDebug(s"Received request $request")
 
         val result = request match {
           case FileLookup(fileName) => lookupFile(fileName)
@@ -25,7 +23,6 @@ class FileLookupClient(serverHost: String, serverPort: Int, classDir: String) ex
 
         val oos = new ObjectOutputStream(socket.getOutputStream)
         oos.writeObject(result)
-//        logDebug(s"Sent back response")
       }
     } catch {
       case e: Throwable =>
@@ -38,7 +35,6 @@ class FileLookupClient(serverHost: String, serverPort: Int, classDir: String) ex
   thread.start()
 
   def stopServer() : Unit = {
-//    logDebug("Shutting down file client")
     thread.interrupt()
   }
 
@@ -53,12 +49,13 @@ class FileLookupClient(serverHost: String, serverPort: Int, classDir: String) ex
     // or the client program
     val pathInClientProg = classDir + classNameToFilePath(className)
     val pathInLib = getLibClassDirectory + classNameToFilePath(className)
-    if(new File(pathInClientProg).isFile)
+    if(new File(pathInClientProg).isFile) {
       readFile(pathInClientProg)
-    else if(new File(pathInLib).isFile)
+    } else if(new File(pathInLib).isFile) {
       readFile(pathInLib)
-    else
+    } else {
       None
+    }
   }
 
   private def readFile(fileName: String): Option[Array[Byte]] = {
@@ -67,7 +64,7 @@ class FileLookupClient(serverHost: String, serverPort: Int, classDir: String) ex
     } catch {
       case _: FileNotFoundException => None
       case _: IOException => None
-      case e =>
+      case e: Throwable =>
         System.err.println(s"Unexpected exception: $e")
         None
     }
@@ -78,7 +75,6 @@ class FileLookupClient(serverHost: String, serverPort: Int, classDir: String) ex
   }
 
   private def lookupClass(className: String): FileLookupResult = {
-     logDebug(s"lookupClass($className)")
      FileLookupResult(readClassFile(className))
   }
 

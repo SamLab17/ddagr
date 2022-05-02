@@ -12,6 +12,7 @@ import java.io.FileNotFoundException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits._
 import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}
 import scala.concurrent.{Await, Future}
@@ -153,7 +154,12 @@ class ExecutorManager extends Logging {
       Future.failed(new FileNotFoundException(s"Could not find ${request.fileName}"))
   }
 
-  case class Stage(stageId: Int, instructions: ExecutorInstruction, var result: Option[OperationResult] = None)
+  case class Stage(
+    stageId: Int,
+    instructions: ExecutorInstruction,
+    var result: Option[OperationResult] = None,
+    var startTime: Option[Long] = None,
+    var endTime: Option[Long] = None)
 
   def executeOperation(op: OperationDescriptor, clientId: Int, clientCl: ClassLoader): ExecuteOperationResult = {
 
@@ -297,6 +303,7 @@ class ExecutorManager extends Logging {
     // Get executor(s)
     // FIXME
     val executorsToRun = getExecutors(stage, dependencies)
+    stage.startTime = Some(System.nanoTime())
 
     executorsToRun transformWith {
       case Failure(throwable) => {
@@ -310,11 +317,12 @@ class ExecutorManager extends Logging {
           .map(taskResults => {
             // Combine results together
             val results = taskResults.map(t => deserialize[OperationResult](t.output, clientCl))
-            //            logDebug(s"Stage results: $results")
+//            logDebug(s"Stage results: $results")
             results.reduce(_ combineWith _)
           }) andThen {
           case Success(result) => {
-            logDebug(s"Stage ${stage.stageId} has completed")
+            stage.endTime = Some(System.nanoTime())
+            logDebug(s"Stage ${stage.stageId} has completed. Took ${(stage.endTime.get - stage.startTime.get) / 1e9} seconds.")
             stage.result = Some(result)
           }
           case Failure(throwable) =>
@@ -363,6 +371,21 @@ class ExecutorManager extends Logging {
     }
   }
 
+  // Breaks up a Seq into `n` sub-sequences with about as many elements in each sub-sequence
+  def breakSeqIntoNParts[T](s: Seq[T], n: Int): Seq[Seq[T]] = {
+    if(n <= 1) {
+      Seq(s)
+    } else {
+      val parts = new ListBuffer[ListBuffer[T]]()
+      (1 to n).foreach(_ => parts.addOne(new ListBuffer[T]()))
+      s.zipWithIndex.foreach {
+        case (elem, index) => parts(index % n) += elem
+      }
+      parts.map(_.toSeq).toSeq
+    }
+
+  }
+
   def partitionInstruction(instr: ExecutorInstruction, n: Int): Seq[ExecutorInstruction] = {
     val numNat = numNaturalPartitions(instr)
     assert(n <= numNat)
@@ -372,17 +395,17 @@ class ExecutorManager extends Logging {
         case ClientMultipleTextFileInputInstruction(fileNames) => {
           // TODO: Assuming there can only be one multiple file instruction (assert fails if union instruction added)
           assert(fileNames.size == numNat)
-          val res = fileNames.grouped((fileNames.size + n - 1) / n).map(fileNameSubset => {
-            ClientMultipleTextFileInputInstruction(fileNameSubset)
-          }).toSeq
+          val res = breakSeqIntoNParts(fileNames, n).map(urlSubset =>
+            ClientMultipleTextFileInputInstruction(urlSubset)
+          )
           assert(res.size == n)
           res
         }
         case UrlMultipleTextFileInputInstruction(urls) => {
           assert(urls.size == numNat)
-          val res = urls.grouped((urls.size + n - 1) / n).map(urlSubset => {
+          val res = breakSeqIntoNParts(urls, n).map(urlSubset =>
             UrlMultipleTextFileInputInstruction(urlSubset)
-          }).toSeq
+          )
           assert(res.size == n)
           res
         }
@@ -454,6 +477,17 @@ class ExecutorManager extends Logging {
         }
       }).distinct
       resultExecutors ++= partitionExecutors
+
+      if(resultExecutors.isEmpty) {
+        resultExecutors ++=
+          executors.values
+          .filter(e =>
+          e.status match {
+            case _: Idle => true
+            case _ => false
+          }
+        ).take(1).map(_.executorId)
+      }
 
       // Perhaps other checks later...
       Future.successful(resultExecutors)
