@@ -2,14 +2,42 @@ package com.samlaberge
 
 object WordApp extends DdagrApp {
 
-  //  val ddagr = new Ddagr(DdagrOptions("localhost"))
   val ddagr = new Ddagr("frosted-mini-wheats.cs.utexas.edu")
-  val start = System.nanoTime()
-//  wordLength(ddagr)
-    wordFrequencies(ddagr)
-  val nSeconds = (System.nanoTime() - start) / 1e9
-  println(s"${nSeconds} seconds elapsed")
+  wordFrequencies(ddagr)
   ddagr.exit()
+
+
+  def wordFrequencies(ddagr: Ddagr): Seq[(String, Int)] = {
+    val ds = ddagr.urlTextFiles(BookUrls.urls)
+    ds
+      .flatMap(_.split("\\s+"))
+      .map(_.trim)
+      .map(_.toLowerCase)
+      .filter(_.nonEmpty)
+      .groupBy(identity)
+      .mapGroups((word, words) => (word, words.size))
+      .firstNBy(100, _._2, descending = true)
+      .collect()
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   def wordLength(ddagr: Ddagr): Unit = {
     val res =
@@ -28,19 +56,6 @@ object WordApp extends DdagrApp {
     println(res.mkString("\n"))
   }
 
-  def wordFrequencies(ddagr: Ddagr): Unit = {
-    val ds = ddagr.urlTextFiles(BookUrls.urls)
-    val wordFrequencies = ds
-      .flatMap(_.split("\\s+"))
-      .map(_.trim)
-      .map(_.toLowerCase)
-      .filter(_.nonEmpty)
-      .groupBy(identity)
-      .mapGroups((word, words) => (word, words.size))
-      .firstNBy(10, _._2, descending = true)
-      .collect()
-//    println(wordFrequencies)
-  }
 
   def mapReduce[T, M, K, S](
     ds: Dataset[T],

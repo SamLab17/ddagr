@@ -43,6 +43,14 @@ trait Dataset[T] {
     TopNDataset(ddagr, this, n, ltFn)
   }
 
+  def largestN[U](n: Int, sortKey: T => U)(implicit ord: Ordering[U]): Dataset[T] = {
+    TopNDataset(ddagr, this, n, (lhs, rhs) => ord.gt(sortKey(lhs), sortKey(rhs)))
+  }
+
+  def smallestN[U](n: Int, sortKey: T => U)(implicit ord: Ordering[U]): Dataset[T] = {
+    TopNDataset(ddagr, this, n, (lhs, rhs) => ord.lt(sortKey(lhs), sortKey(rhs)))
+  }
+
   def collect(limit: Option[Int] = None): Seq[T] = {
     ddagr.doCollect(this, limit)
   }
